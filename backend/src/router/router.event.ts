@@ -80,9 +80,7 @@ eventRouter.post("/postEvent", async (req: Request, res: Response) => {
     try {
       links = JSON.parse(links);
     } catch (e) {
-      return res
-        .status(400)
-        .json({ error: "Invalid JSON format in associate_links" });
+      return res.status(400).json({ error: "Invalid JSON format in associate_links" });
     }
   }
 
@@ -97,25 +95,37 @@ eventRouter.post("/postEvent", async (req: Request, res: Response) => {
     req.body.mcv_submitted,
   ];
 
-  const queryText: string = `
-        INSERT INTO event (name, description, associate_links, start_time, end_time, timezone, mcv_ref, mcv_submitted)
-        VALUES (
-            $1,
-            $2,
-            $3,
-            $4,
-            $5,
-            $6,
-            $7,
-            $8
-        );
-    `;
+  const tagId: number[] = [...new Set<number>((req.body.tag_id ?? []).map(Number))];
+  if(tagId.some((n) => !Number.isInteger(n))) {
+    return res.status(400).json({ error: "tag_id must only contain integers" });
+  }
 
+  const client = await DBPool.connect();
   try {
-    const result = await DBPool.query(queryText, queryParam);
-    res.status(200).json(result);
+    await client.query("BEGIN");
+    const { rows } = await client.query(
+      `INSERT INTO event (name, description, associate_links, start_time, end_time, timezone, mcv_ref, mcv_submitted)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      RETURNING id;`
+      , queryParam
+    );
+    const eventId = rows[0].id;
+
+    if(tagId.length) {
+      await client.query(
+        `INSERT INTO junction (event_id, tag_id)
+        SELECT $1, unnest($2::int[]);`
+        , [eventId, tagId]
+      );
+    }
+
+    await client.query("COMMIT");
+    res.status(201).json({ id: eventId, tags: tagId});
   } catch (err) {
-    res.status(404).json(err);
+    await client.query("ROLLBACK");
+    res.status(400).json(err);
+  } finally {
+    client.release();
   }
 });
 
@@ -133,6 +143,15 @@ eventRouter.put("/updateEvent/:id", async (req: Request, res: Response) => {
     }
   }
 
+  // tags handling stuff
+  const hasTag = Array.isArray(req.body.tag_id);
+  const tagId: number[] = hasTag
+    ? [...new Set<number>(req.body.tag_id.map(Number))]
+    : [];
+  if (tagId.some((n) => !Number.isInteger(n))) {
+    return res.status(400).json({ error: "tag_id must be integers" });
+  }
+
   const queryParam: (string | number | Date | boolean | null)[] = [
     req.body.name,
     req.body.description,
@@ -142,26 +161,47 @@ eventRouter.put("/updateEvent/:id", async (req: Request, res: Response) => {
     req.body.timezone,
     req.body.mcv_ref,
     req.body.mcv_submitted,
+    id
   ];
 
-  const queryText: string = `
-        UPDATE event
-        SET name = $1,
-            description = $2,
-            associate_links = $3,
-            start_time = $4,
-            end_time = $5,
-            timezone = $6,
-            mcv_ref = $7,
-            mcv_submitted = $8
-        WHERE id = ${id};
-    `;
 
+  const client = await DBPool.connect();
   try {
-    const result = await DBPool.query(queryText, queryParam);
-    res.status(200).json(result);
+    await client.query("BEGIN");
+
+    const result = await client.query(
+      `UPDATE event
+       SET name = $1, description = $2, associate_links = $3,
+           start_time = $4, end_time = $5, timezone = $6,
+           mcv_ref = $7, mcv_submitted = $8
+       WHERE id = $9;`,
+      queryParam,
+    );
+    if (result.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Event not found" });
+    }
+
+    if (hasTag) {
+      await client.query(`DELETE FROM junction WHERE event_id = $1;`, [id]);
+      if (tagId.length) {
+        await client.query(
+          `INSERT INTO junction (event_id, tag_id)
+           SELECT $1, unnest($2::int[]);`,
+          [id, tagId],
+        );
+      }
+    }
+
+
+
+    await client.query("COMMIT");
+    res.status(200).json({ id, tag_ids: hasTag ? tagId : undefined });
   } catch (err) {
+    await client.query("ROLLBACK");
     res.status(404).json(err);
+  } finally {
+    client.release();
   }
 });
 
