@@ -28,9 +28,9 @@ const app = new App().app;
 app.use(express.json());
 
 // connecting to database
-await DBPool.connect().then(() => {
-  console.log("Database conncted");
-});
+// query() borrows and returns a pool client; connect() alone would keep one forever
+await DBPool.query("SELECT 1");
+console.log("Database connected");
 
 // initializing backend
 app.use("/api/event", eventRouter);
