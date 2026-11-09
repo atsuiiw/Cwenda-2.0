@@ -62,6 +62,26 @@ eventRouter.get("/getEventByTags", async (req: Request, res: Response) => {
   }
 });
 
+eventRouter.get("/getEvent/:id", async (req: Request, res: Response) => {
+  
+  const id = Number(req.params.id);
+  if(isNaN(id)){
+    return res.status(400).json({ error: "Id must be integer" });
+  }
+  
+  try {
+    const result = await DBPool.query(`SELECT * FROM event WHERE id=$1`, [id]);
+
+    if(result.rows.length===0){
+      return res.status(404).json({ error: "Event not found" });
+    }
+    res.status(200).json(result.rows);
+  }
+  catch (err){
+    res.status(400).json(err);
+  }
+})
+
 eventRouter.post("/postEvent", async (req: Request, res: Response) => {
   const body = req.body ?? {};
   const queryParam = parseEventBody(body);
