@@ -15,8 +15,8 @@ export type Event = {
 export type Tag = { id: number; name: string };
 
 // "/api" is proxied to the backend by vite.config.ts
-async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`/api${path}`);
+async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`/api${path}`, init);
   const body = await res.json();
   if (!res.ok) throw new Error(body?.error ?? `Request failed (${res.status})`);
   return body;
@@ -39,4 +39,23 @@ export async function handleGetEventById(id: number): Promise<Event> {
   // the backend sends a one-row array
   const [event] = await getJson<Event[]>(`/event/getEvent/${id}`);
   return event;
+}
+
+// PUT replaces every column, so send the whole event.
+// Tags stay as they are unless `tag_id` is sent; then it replaces the event's tags ([] removes all).
+export function handleUpdateEvent(event: Event & { tag_id?: number[] }) {
+  const { id, ...body } = event;
+  return getJson<{ id: number }>(`/event/updateEvent/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function handleCreateTag(name: string): Promise<Tag> {
+  return getJson("/tag/postTag", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
 }

@@ -70,7 +70,16 @@ eventRouter.get("/getEvent/:id", async (req: Request, res: Response) => {
   }
   
   try {
-    const result = await DBPool.query(`SELECT * FROM event WHERE id=$1`, [id]);
+    // same shape as /getEvent, so the event carries its tag_ids
+    const result = await DBPool.query(
+      `SELECT e.*,
+              COALESCE(array_agg(j.tag_id) FILTER (WHERE j.tag_id IS NOT NULL), '{}') AS tag_ids
+       FROM event e
+       LEFT JOIN junction j ON j.event_id = e.id
+       WHERE e.id = $1
+       GROUP BY e.id;`,
+      [id],
+    );
 
     if(result.rows.length===0){
       return res.status(404).json({ error: "Event not found" });
