@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   handleGetEvent,
   handleGetTag,
+  handleImportMcv,
   type Event as EventItem,
 } from "../api/api.config";
 import { useNavigate } from "react-router-dom";
@@ -45,6 +46,24 @@ export function Event() {
     );
 
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0); // bump to fetch events again
+
+  const importMcv = async () => {
+    setImporting(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const { added, updated } = await handleImportMcv();
+      setNotice(`MCV import: ${added} added, ${updated} updated.`);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      setError((err as Error).message); // e.g. "MCV session expired. Run `mcv auth login`…"
+    } finally {
+      setImporting(false);
+    }
+  };
 
   useEffect(() => {
     // wait while the tag manager is open; closing it reloads, so renamed/deleted tags show up
@@ -72,7 +91,7 @@ export function Event() {
     return () => {
       ignore = true;
     };
-  }, [showPast, tagManagerOpen]);
+  }, [showPast, tagManagerOpen, reloadKey]);
 
   // console.log(data);
 
@@ -149,9 +168,15 @@ export function Event() {
               open={tagManagerOpen}
               onClose={() => setTagManagerOpen(false)}
             />
-            <button className={buttonClass + "dark:bg-gray-700 bg-gray-300"}>
-              {" "}
-              Import From MCV
+            <button
+              className={
+                buttonClass +
+                "dark:bg-gray-700 bg-gray-300 disabled:opacity-50 disabled:cursor-wait"
+              }
+              onClick={importMcv}
+              disabled={importing}
+            >
+              {importing ? "Importing…" : "Import From MCV"}
             </button>
             <button
               className={buttonClass + "bg-sky-500"}
@@ -198,6 +223,7 @@ export function Event() {
 
         <div>
           {error && <p className="text-primary-color">{error}</p>}
+          {notice && <p className="opacity-70 dark:text-white">{notice}</p>}
           {activeTags.length > 0 && filtered.length === 0 && (
             <p className="opacity-70 dark:text-white">
               No events match these tags.

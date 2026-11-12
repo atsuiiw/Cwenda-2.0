@@ -17,9 +17,39 @@ export type Tag = { id: number; name: string };
 // "/api" is proxied to the backend by vite.config.ts
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, init);
+  // session expired: reload so AppRouter shows the login screen (auth routes report their own errors)
+  if (res.status === 401 && !path.startsWith("/auth/"))
+    window.location.reload();
   const body = await res.json();
   if (!res.ok) throw new Error(body?.error ?? `Request failed (${res.status})`);
   return body;
+}
+
+export type AuthStatus = {
+  setupDone: boolean;
+  loggedIn: boolean;
+  username?: string;
+};
+
+export function handleAuthStatus(): Promise<AuthStatus> {
+  return getJson("/auth/status");
+}
+
+// "setup" creates the account (first run only); "login" signs in. Both set the session cookie.
+export function handleAuth(
+  mode: "setup" | "login",
+  username: string,
+  password: string,
+) {
+  return getJson<{ username: string }>(`/auth/${mode}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export function handleLogout() {
+  return getJson("/auth/logout", { method: "POST" });
 }
 
 // Events that overlap [start, end], ordered by start_time.
@@ -52,12 +82,12 @@ export function handleUpdateEvent(event: Event & { tag_id?: number[] }) {
   });
 }
 
-export function handlePostEvent(event: object){
-  return getJson("/event/postEvent",{
+export function handlePostEvent(event: object) {
+  return getJson("/event/postEvent", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(event),
-  })
+  });
 }
 
 export function handleCreateTag(name: string): Promise<Tag> {
@@ -79,4 +109,9 @@ export function handleUpdateTag(id: number, name: string): Promise<Tag> {
 // Also removes the tag from every event (junction rows cascade).
 export function handleDeleteTag(id: number): Promise<{ id: number }> {
   return getJson(`/tag/deleteTag/${id}`, { method: "DELETE" });
+}
+
+// Runs mcv-cli on the backend's machine; can take a while (one request per course).
+export function handleImportMcv(): Promise<{ added: number; updated: number }> {
+  return getJson("/event/importMcv", { method: "POST" });
 }

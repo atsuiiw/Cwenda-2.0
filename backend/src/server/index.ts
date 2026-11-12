@@ -11,6 +11,8 @@ import DBPool from "../database/database.ts";
 // environment
 import dotenv from "dotenv";
 import tagRouter from "../router/router.tag.ts";
+import authRouter from "../router/router.auth.ts";
+import { requireAuth } from "../auth/auth.ts";
 dotenv.config();
 
 // default app class
@@ -33,8 +35,10 @@ await DBPool.query("SELECT 1");
 console.log("Database connected");
 
 // initializing backend
-app.use("/api/event", eventRouter);
-app.use("/api/tag", tagRouter);
+app.use("/api/auth", authRouter);
+// everything else needs a logged-in session
+app.use("/api/event", requireAuth, eventRouter);
+app.use("/api/tag", requireAuth, tagRouter);
 app.get("/", (req: Request, res: Response) => {
   res.send("The backend is now running...");
 });

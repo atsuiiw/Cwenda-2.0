@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { handleLogout } from "../api/api.config";
 
 import home from "../assets/dynnamitt_home.svg";
 import calendar from "../assets/bridging-day-icon.svg";
@@ -52,8 +53,15 @@ export function Navbar({ darkTheme, onThemeToggle }: ThemeProps) {
           <button className={buttonClass} onClick={onThemeToggle}>
             <img src={darkTheme ? moon : sun} className="w-8 h-8 dark:invert" />
           </button>
-          <button className={buttonClass}>
-            <img src={account} alt="ACCOUNT" className="w-8 h-8 dark:invert" />
+          <button
+            className={buttonClass}
+            title="Log out"
+            // reload so AppRouter asks the backend again and shows the login screen
+            onClick={() =>
+              handleLogout().finally(() => window.location.reload())
+            }
+          >
+            <img src={account} alt="Log out" className="w-8 h-8 dark:invert" />
           </button>
         </div>
       </div>
