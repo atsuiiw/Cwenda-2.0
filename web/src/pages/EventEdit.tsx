@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   handleCreateTag,
   handleGetEventById,
+  handlePostEvent,
   handleGetTag,
   handleUpdateEvent,
   type Event as EventItem,
@@ -18,6 +19,28 @@ const toLocalInput = (iso: string) => {
     .slice(0, 16);
 };
 
+// /event/add opens this page for a new event (nothing is stored until Save).
+const NEW_EVENT_ID = "add";
+
+// A new event starts at the next full hour and lasts an hour, in the browser's time zone.
+function blankEvent(): EventItem {
+  const start = new Date();
+  start.setHours(start.getHours() + 1, 0, 0, 0);
+  const end = new Date(start.getTime() + 60 * 60_000);
+  return {
+    id: 0,
+    name: "",
+    description: null,
+    associate_links: null,
+    start_time: start.toISOString(),
+    end_time: end.toISOString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    mcv_ref: null,
+    mcv_submitted: null,
+    tag_ids: [],
+  };
+}
+
 const pickerClass = `
   px-3 py-1.5 rounded-lg text-sm
   bg-background-color-light dark:bg-background-color-dark shadow-sm
@@ -28,6 +51,7 @@ const pickerClass = `
 
 export function EventEdit() {
   const { id } = useParams(); // the ":id" part of /event/:id
+  const isNew = id === NEW_EVENT_ID;
   const navigate = useNavigate();
   const [event, setEvent] = useState<EventItem | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +69,12 @@ export function EventEdit() {
     let ignore = false; // drop the response if the user left or moved to another id
 
     // shortcut: no reset when :id changes in place; add one if this page ever links to another event
-    Promise.all([handleGetEventById(Number(id)), handleGetTag()])
+    const load =
+      id === NEW_EVENT_ID
+        ? Promise.resolve(blankEvent())
+        : handleGetEventById(Number(id));
+
+    Promise.all([load, handleGetTag()])
       .then(([result, tags]) => {
         if (ignore) return;
         setEvent(result);
@@ -73,14 +102,16 @@ export function EventEdit() {
     setSaving(true);
     setError(null);
     try {
-      await handleUpdateEvent({
+      const body = {
         ...event, // keeps fields this page doesn't edit (links, timezone, mcv_*)
         name: title,
         description,
         start_time: new Date(startTime).toISOString(),
         end_time: new Date(endTime).toISOString(),
         tag_id: tagIds,
-      });
+      };
+      // the backend ignores body.id on create; the DB picks the id
+      await (isNew ? handlePostEvent(body) : handleUpdateEvent(body));
       navigate("/event");
     } catch (err) {
       setError((err as Error).message); // e.g. "name is required"

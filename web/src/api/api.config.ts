@@ -52,10 +52,31 @@ export function handleUpdateEvent(event: Event & { tag_id?: number[] }) {
   });
 }
 
+export function handlePostEvent(event: object){
+  return getJson("/event/postEvent",{
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(event),
+  })
+}
+
 export function handleCreateTag(name: string): Promise<Tag> {
   return getJson("/tag/postTag", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
   });
+}
+
+export function handleUpdateTag(id: number, name: string): Promise<Tag> {
+  return getJson(`/tag/updateTag/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
+// Also removes the tag from every event (junction rows cascade).
+export function handleDeleteTag(id: number): Promise<{ id: number }> {
+  return getJson(`/tag/deleteTag/${id}`, { method: "DELETE" });
 }
