@@ -127,7 +127,7 @@ export function TagManager({ open, onClose }: Props) {
 
         {error && <p className="text-sm text-primary-color">{error}</p>}
 
-        <ul className="flex flex-col gap-2 overflow-y-auto">
+        <ul className="flex flex-col gap-2 overflow-y-auto p-1">
           {tags.map((tag) => (
             <li key={tag.id} className="flex gap-2 items-center">
               <input

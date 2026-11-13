@@ -6,6 +6,7 @@ import {
   handlePostEvent,
   handleGetTag,
   handleUpdateEvent,
+  handleDeleteEvent,
   type Event as EventItem,
   type Tag,
 } from "../api/api.config";
@@ -93,9 +94,23 @@ export function EventEdit() {
   }, [id]);
 
   const [saving, setSaving] = useState(false);
+  const [deleting,setDeleting] = useState(false);
 
   // Cancel throws away unsaved edits: nothing was sent, so just leave.
   const handleCancel = () => navigate("/event");
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError(null);
+    try{
+      await handleDeleteEvent(Number(id));
+      navigate("/event");
+    }
+    catch (err) {
+      setError((err as Error).message);
+      setDeleting(false);
+    }
+  }
 
   const handleSave = async () => {
     if (!event) return;
@@ -297,8 +312,19 @@ export function EventEdit() {
 
           {/* Save and Cancel */}
           <div className="flex gap-2 absolute bottom-15 right-20">
+            { id !== NEW_EVENT_ID && (
+              <button
+                className="text-2xl px-3.5 py-2.5 bg-red-500 rounded-lg hover:cursor-pointer hover:opacity-90 hover:scale-95 duration-100"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {" "}
+                {deleting ? "Deleting" : "Delete"}{" "}
+              </button>
+              )
+            }
             <button
-              className="text-2xl px-3.5 py-2.5 bg-red-500 rounded-lg hover:cursor-pointer hover:opacity-90 hover:scale-95 duration-100"
+              className="text-2xl px-3.5 py-2.5 bg-slate-400 rounded-lg hover:cursor-pointer hover:opacity-90 hover:scale-95 duration-100"
               onClick={handleCancel}
             >
               {" "}

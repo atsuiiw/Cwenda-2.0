@@ -61,6 +61,13 @@ export function handleGetEvent(start: Date, end: Date): Promise<Event[]> {
   return getJson(`/event/getEvent?${query}`);
 }
 
+export function handleDeleteEvent(id: number): Promise<Event[]> {
+  return getJson(`/event/deleteEvent/${id}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 export function handleGetTag(): Promise<Tag[]> {
   return getJson("/tag/getTag");
 }
