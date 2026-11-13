@@ -22,13 +22,13 @@ export function Navbar({ darkTheme, onThemeToggle }: ThemeProps) {
   const buttonClass: string = `
     hover:cursor-pointer hover:bg-secondary-color
     text-black dark:text-white rounded-lg p-2
-    duration-150
+    duration-100
   `;
 
   return (
     <>
       <div
-        className={`bg-middleground-color-light dark:bg-middleground-color-dark w-20 shrink-0 m-2 py-4 rounded-md flex flex-col justify-between items-center`}
+        className={`bg-middleground-color-light dark:bg-middleground-color-dark w-20 shrink-0 m-2 py-4 rounded-md flex flex-col justify-between items-center duration-100`}
       >
         <div className="flex flex-col items-center gap-4">
           {links.map(([label, path, icon]) => {

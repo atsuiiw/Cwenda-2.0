@@ -31,7 +31,7 @@ export function AppRouter({ darkTheme, onThemeToggle }: ThemeProps) {
   return (
     <>
       <BrowserRouter>
-        <div className="flex h-screen w-full bg-background-color-light dark:bg-background-color-dark duration-150">
+        <div className="flex h-screen w-full bg-background-color-light dark:bg-background-color-dark duration-100">
           {!auth ? (
             authError && (
               <p className="m-auto text-primary-color">{authError}</p>

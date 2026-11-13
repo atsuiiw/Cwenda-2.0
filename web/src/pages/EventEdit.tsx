@@ -94,7 +94,7 @@ export function EventEdit() {
   }, [id]);
 
   const [saving, setSaving] = useState(false);
-  const [deleting,setDeleting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Cancel throws away unsaved edits: nothing was sent, so just leave.
   const handleCancel = () => navigate("/event");
@@ -102,15 +102,14 @@ export function EventEdit() {
   const handleDelete = async () => {
     setDeleting(true);
     setError(null);
-    try{
+    try {
       await handleDeleteEvent(Number(id));
       navigate("/event");
-    }
-    catch (err) {
+    } catch (err) {
       setError((err as Error).message);
       setDeleting(false);
     }
-  }
+  };
 
   const handleSave = async () => {
     if (!event) return;
@@ -168,9 +167,15 @@ export function EventEdit() {
     }
   };
 
-  const links = Array.isArray(event?.associate_links)
-    ? (event.associate_links as string[])
-    : [];
+  // associate_links is free-form JSON: a URL string, {url, label} (MCV import), or an array of
+  // either. Anything without a string url is skipped.
+  const raw = event?.associate_links;
+  const links = (Array.isArray(raw) ? raw : raw ? [raw] : []).flatMap((l) => {
+    if (typeof l === "string") return [{ url: l, label: l }];
+    const { url, label } = (l ?? {}) as { url?: unknown; label?: unknown };
+    if (typeof url !== "string") return [];
+    return [{ url, label: typeof label === "string" ? label : url }];
+  });
 
   return (
     <div className="flex flex-col gap-4 m-2 bg-middleground-color-light dark:bg-middleground-color-dark w-full rounded-md px-20 py-12 overflow-y-auto dark:text-white">
@@ -295,15 +300,16 @@ export function EventEdit() {
           />
           {links.length > 0 && (
             <ul className="list-disc pl-5">
-              {links.map((link) => (
-                <li key={link}>
+              {links.map((link, i) => (
+                <li key={i}>
                   <a
-                    href={link}
+                    href={link.url}
+                    title={link.url}
                     target="_blank"
                     rel="noreferrer"
                     className="underline"
                   >
-                    {link}
+                    {link.label}
                   </a>
                 </li>
               ))}
@@ -312,7 +318,7 @@ export function EventEdit() {
 
           {/* Save and Cancel */}
           <div className="flex gap-2 absolute bottom-15 right-20">
-            { id !== NEW_EVENT_ID && (
+            {id !== NEW_EVENT_ID && (
               <button
                 className="text-2xl px-3.5 py-2.5 bg-red-500 rounded-lg hover:cursor-pointer hover:opacity-90 hover:scale-95 duration-100"
                 onClick={handleDelete}
@@ -321,8 +327,7 @@ export function EventEdit() {
                 {" "}
                 {deleting ? "Deleting" : "Delete"}{" "}
               </button>
-              )
-            }
+            )}
             <button
               className="text-2xl px-3.5 py-2.5 bg-slate-400 rounded-lg hover:cursor-pointer hover:opacity-90 hover:scale-95 duration-100"
               onClick={handleCancel}

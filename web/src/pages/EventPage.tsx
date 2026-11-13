@@ -128,23 +128,23 @@ export function Event() {
     : grouped.map((s) => ({ ...s, events: [...s.events].reverse() })).reverse();
 
   const pillClass = `
-    px-3 py-1 rounded-full text-xs hover:cursor-pointer hover:opacity-90 duration-150
+    px-3 py-1 rounded-full text-xs hover:cursor-pointer hover:opacity-90 duration-100
   `;
-  const unselectedPill = "bg-gray-300 dark:bg-gray-700 dark:text-white";
+  const unselectedPill = "bg-gray-300 dark:bg-gray-700 dark:text-white duration-100";
 
   const buttonClass = `
     hover:cursor-pointer hover:scale-97 hover:opacity-90
     dark:text-white
     px-3.5 py-2.5
     rounded-lg
-    duration-150
+    duration-100
   `;
 
   return (
     <>
-      <div className="flex flex-col gap-6 m-2 bg-middleground-color-light dark:bg-middleground-color-dark w-full rounded-md px-20 py-12 overflow-y-auto">
+      <div className="flex flex-col gap-6 m-2 bg-middleground-color-light dark:bg-middleground-color-dark w-full rounded-md px-20 py-12 overflow-y-auto duration-100">
         <div className="flex justify-between">
-          <h1 className="text-4xl dark:text-white"> Events </h1>
+          <h1 className="text-4xl dark:text-white font-bold"> Events </h1>
           <div className="flex gap-4">
             <button
               aria-pressed={showPast}
@@ -233,13 +233,13 @@ export function Event() {
             ({ title, events }) =>
               events.length > 0 && (
                 <section key={title}>
-                  <h2 className="text-2xl mb-3 dark:text-white">{title}</h2>
+                  <h2 className="text-2xl mb-3 dark:text-white duration-100">{title}</h2>
                   <ul>
                     {events.map((event) => (
                       <li
                         key={event.id}
                         onClick={() => navigate(`/event/${event.id}`)}
-                        className="hover:opacity-90 hover:cursor-pointer flex gap-2 p-4 mb-4 rounded-lg bg-background-color-light dark:bg-background-color-dark shadow-sm dark:text-white"
+                        className="duration-100 hover:opacity-90 hover:cursor-pointer flex gap-2 p-4 mb-4 rounded-lg bg-background-color-light dark:bg-background-color-dark shadow-sm dark:text-white"
                       >
                         <div className="w-3/5">
                           <h3 className="text-xl">{event.name}</h3>
