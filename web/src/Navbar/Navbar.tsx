@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { handleLogout } from "../api/api.config";
 
 import home from "../assets/dynnamitt_home.svg";
@@ -11,6 +12,8 @@ import moon from "../assets/moon.svg";
 export type ThemeProps = { darkTheme: boolean; onThemeToggle: () => void };
 
 export function Navbar({ darkTheme, onThemeToggle }: ThemeProps) {
+
+  const [active,setActive] = useState<string>("HOME");
   const navigate = useNavigate();
   // [label, path, icon?] — icon replaces the text; label stays as alt text
   const links: string[][] = [
@@ -35,9 +38,10 @@ export function Navbar({ darkTheme, onThemeToggle }: ThemeProps) {
             return (
               <button
                 key={label}
-                className={buttonClass}
+                className={buttonClass + (active === label ? "bg-secondary-color" : "") }
                 onClick={() => {
                   navigate(path);
+                  setActive(label);
                 }}
               >
                 {icon ? (
