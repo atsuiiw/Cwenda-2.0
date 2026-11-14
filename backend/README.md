@@ -35,8 +35,14 @@ Check it at http://localhost:3000/.
 
 ## API
 
+Everything under `/api/event` and `/api/tag` needs a logged-in session (else `401`).
+
 | Method | Path | Notes |
 |--------|------|-------|
+| GET | `/api/auth/status` | `{ setupDone, loggedIn, username? }` |
+| POST | `/api/auth/setup` | `{ "username", "password" }` (8+ chars). First run only; `409` once an account exists. Logs in |
+| POST | `/api/auth/login` | `{ "username", "password" }`; sets an HttpOnly session cookie (30 days) |
+| POST | `/api/auth/logout` | |
 | GET | `/api/event/getEvent?start_time=&end_time=` | Events in range, each with `tag_ids` |
 | GET | `/api/event/getEvent/:id` | One event |
 | GET | `/api/event/getEventByTags?start_time=&end_time=&tag_id=1,2&matchType=ANY` | `matchType` is `ANY` (default) or `ALL` |
@@ -54,3 +60,16 @@ Dates are ISO strings, e.g. `2026-11-08T10:00:00Z`.
 
 `db/schema.sql` is the source of truth for the tables. When you change a table,
 update that file in the same commit.
+
+Database created before login existed? Run the `app_user` and `session` `CREATE TABLE`
+statements from `db/schema.sql` once.
+
+## Login
+
+The first time the web app opens it asks you to create a username and password; after that it
+shows a login screen. Forgot the password? Remove the account and the setup screen comes back
+(events and tags are kept):
+
+```bash
+psql -d cwenda -c "DELETE FROM app_user;"
+```

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root{
-    font-family: "Momo Trust Display", sans-serif;
+    font-family: "Gabarito", sans-serif;
 }
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 

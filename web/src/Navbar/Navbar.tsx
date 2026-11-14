@@ -1,4 +1,5 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { handleLogout } from "../api/api.config";
 
 import home from "../assets/dynnamitt_home.svg";
 import calendar from "../assets/bridging-day-icon.svg";
@@ -10,6 +11,9 @@ import moon from "../assets/moon.svg";
 export type ThemeProps = { darkTheme: boolean; onThemeToggle: () => void };
 
 export function Navbar({ darkTheme, onThemeToggle }: ThemeProps) {
+  // first URL segment, e.g. /event/5 -> "EVENT"; read every render so it follows navigation
+  const active = useLocation().pathname.split("/")[1].toUpperCase();
+
   const navigate = useNavigate();
   // [label, path, icon?] — icon replaces the text; label stays as alt text
   const links: string[][] = [
@@ -21,20 +25,21 @@ export function Navbar({ darkTheme, onThemeToggle }: ThemeProps) {
   const buttonClass: string = `
     hover:cursor-pointer hover:bg-secondary-color
     text-black dark:text-white rounded-lg p-2
-    duration-150
+    duration-100
   `;
 
   return (
     <>
       <div
-        className={`bg-middleground-color-light dark:bg-middleground-color-dark w-20 shrink-0 m-2 py-4 rounded-md flex flex-col justify-between items-center`}
+        className={`bg-middleground-color-light dark:bg-middleground-color-dark w-20 shrink-0 m-2 py-4 rounded-md flex flex-col justify-between items-center duration-100`}
       >
         <div className="flex flex-col items-center gap-4">
           {links.map(([label, path, icon]) => {
             return (
               <button
                 key={label}
-                className={buttonClass}
+                aria-current={active === label ? "page" : undefined}
+                className={`${buttonClass} ${active === label ? "bg-secondary-color" : ""}`}
                 onClick={() => {
                   navigate(path);
                 }}
@@ -52,8 +57,15 @@ export function Navbar({ darkTheme, onThemeToggle }: ThemeProps) {
           <button className={buttonClass} onClick={onThemeToggle}>
             <img src={darkTheme ? moon : sun} className="w-8 h-8 dark:invert" />
           </button>
-          <button className={buttonClass}>
-            <img src={account} alt="ACCOUNT" className="w-8 h-8 dark:invert" />
+          <button
+            className={buttonClass}
+            title="Log out"
+            // reload so AppRouter asks the backend again and shows the login screen
+            onClick={() =>
+              handleLogout().finally(() => window.location.reload())
+            }
+          >
+            <img src={account} alt="Log out" className="w-8 h-8 dark:invert" />
           </button>
         </div>
       </div>

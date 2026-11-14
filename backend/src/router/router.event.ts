@@ -2,6 +2,21 @@ import { Router } from "express";
 import { type Response, type Request } from "express";
 import DBPool from "../database/database.ts";
 import { parseEventBody, parseIds, parseRange, sendDbError } from "./helpers.ts";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import path from "node:path";
+
+const run = promisify(execFile);
+const MCV_SCRIPT = path.join(import.meta.dirname, "../../scripts/mcv_assignments.py");
+
+type McvAssignment = {
+  ref: string;
+  title: string;
+  course: string | null;
+  due_at: string;
+  submitted: boolean;
+  url: string | null;
+};
 
 const eventRouter = Router();
 
@@ -70,7 +85,16 @@ eventRouter.get("/getEvent/:id", async (req: Request, res: Response) => {
   }
   
   try {
-    const result = await DBPool.query(`SELECT * FROM event WHERE id=$1`, [id]);
+    // same shape as /getEvent, so the event carries its tag_ids
+    const result = await DBPool.query(
+      `SELECT e.*,
+              COALESCE(array_agg(j.tag_id) FILTER (WHERE j.tag_id IS NOT NULL), '{}') AS tag_ids
+       FROM event e
+       LEFT JOIN junction j ON j.event_id = e.id
+       WHERE e.id = $1
+       GROUP BY e.id;`,
+      [id],
+    );
 
     if(result.rows.length===0){
       return res.status(404).json({ error: "Event not found" });
@@ -196,6 +220,59 @@ eventRouter.delete("/deleteEvent/:id", async (req: Request, res: Response) => {
     res.status(200).json({ id });
   } catch (err) {
     sendDbError(res, err);
+  }
+});
+
+// Imports MyCourseVille assignments (through mcv-cli) as events, matched by mcv_ref.
+// Re-importing updates the due time and submitted flag but keeps the user's name/description edits.
+eventRouter.post("/importMcv", async (req: Request, res: Response) => {
+  let assignments: McvAssignment[];
+  try {
+    // shortcut: expects mcv-cli installed with `uv tool install` on the backend's machine (macOS/Linux layout)
+    const { stdout: toolDir } = await run("uv", ["tool", "dir"]);
+    const python = path.join(toolDir.trim(), "mcv-cli", "bin", "python");
+    const { stdout } = await run(python, ["-I", MCV_SCRIPT], {
+      timeout: 120_000,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    assignments = JSON.parse(stdout);
+  } catch (err) {
+    // the script's stderr is a readable message, e.g. "MCV session expired. Run `mcv auth login`..."
+    const message = (err as { stderr?: string }).stderr?.trim() || (err as Error).message;
+    return res.status(502).json({ error: message });
+  }
+
+  const client = await DBPool.connect();
+  try {
+    await client.query("BEGIN");
+    let added = 0;
+    for (const a of assignments) {
+      const { rows } = await client.query(
+        `INSERT INTO event (name, description, associate_links, start_time, end_time, timezone, mcv_ref, mcv_submitted)
+         VALUES ($1, $2, $3, $4, $4, 'Asia/Bangkok', $5, $6)
+         ON CONFLICT (mcv_ref) DO UPDATE
+           SET start_time = EXCLUDED.start_time,
+               end_time = EXCLUDED.end_time,
+               mcv_submitted = EXCLUDED.mcv_submitted
+         RETURNING (xmax = 0) AS inserted;`, // xmax = 0 only on freshly inserted rows
+        [
+          a.title,
+          a.course ? `Course ${a.course}` : null,
+          JSON.stringify(a.url ? [a.url] : []),
+          a.due_at,
+          a.ref,
+          a.submitted,
+        ],
+      );
+      if (rows[0].inserted) added++;
+    }
+    await client.query("COMMIT");
+    res.status(200).json({ added, updated: assignments.length - added });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    sendDbError(res, err);
+  } finally {
+    client.release();
   }
 });
 
