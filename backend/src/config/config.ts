@@ -1,5 +1,10 @@
 import dotenv from "dotenv";
-dotenv.config();
+import path from "node:path";
+
+// Load backend/.env by its location, not the current folder: started from the repo root,
+// a plain dotenv.config() would read the root .env (Docker settings, no PORT).
+// In Docker there is no .env file; the values come from compose.yaml instead.
+dotenv.config({ path: path.join(import.meta.dirname, "../../.env"), quiet: true });
 
 interface EnvironmentVariables {
   PORT: number;

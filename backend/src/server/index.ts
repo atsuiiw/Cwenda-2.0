@@ -8,14 +8,11 @@ import eventRouter from "../router/router.event.ts";
 import config from "../config/config.ts";
 import DBPool from "../database/database.ts";
 
-// environment
-import dotenv from "dotenv";
 import tagRouter from "../router/router.tag.ts";
 import authRouter from "../router/router.auth.ts";
 import { requireAuth } from "../auth/auth.ts";
 import fs from "node:fs";
 import path from "node:path";
-dotenv.config();
 
 // default app class
 class App {

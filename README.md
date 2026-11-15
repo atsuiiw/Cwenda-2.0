@@ -75,6 +75,24 @@ removes it.
 > If an update changes `backend/db/schema.sql`, its release notes will list the SQL to run, e.g.
 > `docker compose exec db psql -U cwenda -d cwenda -c "ALTER TABLE …"`.
 
+### Start automatically (no Docker Desktop window needed)
+
+The Docker Desktop window isn't what runs the app. The engine behind it is. You can close the
+window and cwenda keeps running, as long as Docker's whale icon is in the menu bar (macOS) or
+system tray (Windows).
+
+To have cwenda come up by itself every time you log in:
+
+1. Docker Desktop → **Settings → General** → turn on **Start Docker Desktop when you sign in to
+   your computer**.
+2. Optional: in the same place, turn off **Open Docker Dashboard when Docker Desktop starts**, so
+   the window doesn't pop up.
+3. Run `docker compose up -d` once (you already did if you followed the steps above).
+
+That's all: `compose.yaml` uses `restart: unless-stopped`, so the containers start whenever the
+Docker engine does. They stay off only if you stopped them yourself (`docker compose stop` or
+`down`) or quit Docker Desktop from the whale icon.
+
 ## Run without Docker (for development)
 
 **Requirements**
