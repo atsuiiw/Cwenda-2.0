@@ -276,4 +276,73 @@ eventRouter.post("/importMcv", async (req: Request, res: Response) => {
   }
 });
 
+// shortcut: same uv tool layout as /importMcv (macOS/Linux); the `mcv` executable sits next to its python
+async function mcvExecutable() {
+  const { stdout } = await run("uv", ["tool", "dir"]);
+  return path.join(stdout.trim(), "mcv-cli", "bin", "mcv");
+}
+
+// mcv --json prints errors to stderr as {"code": ..., "message": ...}
+function mcvError(err: unknown): { code?: string; message: string } {
+  const stderr = (err as { stderr?: string }).stderr?.trim();
+  try {
+    const parsed = JSON.parse(stderr ?? "");
+    if (typeof parsed?.message === "string") return parsed;
+  } catch {
+    // not JSON: fall through to the raw text
+  }
+  return { message: stderr || (err as Error).message };
+}
+
+// Whether the backend's machine has a working MCV session: { authenticated, session_expired? }
+eventRouter.get("/mcvStatus", async (_req: Request, res: Response) => {
+  try {
+    const { stdout } = await run(await mcvExecutable(), ["--json", "--quiet", "auth", "status"], {
+      timeout: 30_000,
+    });
+    res.status(200).json(JSON.parse(stdout));
+  } catch (err) {
+    res.status(502).json({ error: mcvError(err).message });
+  }
+});
+
+// Logs mcv-cli in to MyCourseVille, so /importMcv works without a terminal.
+// The password goes to mcv over stdin (never argv, which other local users can see in `ps`)
+// and is not stored by cwenda; mcv-cli keeps its own session in the OS keyring.
+eventRouter.post("/mcvLogin", async (req: Request, res: Response) => {
+  const { username, password } = req.body ?? {};
+  // starts with a letter/digit so it can't be read as an mcv option like "--help"
+  if (typeof username !== "string" || !/^[A-Za-z0-9][\w.@-]*$/.test(username.trim())) {
+    return res.status(400).json({ error: "Enter your Chula username." });
+  }
+  if (typeof password !== "string" || !password || /[\r\n]/.test(password)) {
+    return res.status(400).json({ error: "Enter your MyCourseVille password." });
+  }
+  try {
+    const login = run(
+      await mcvExecutable(),
+      ["--json", "--quiet", "auth", "login", "--username", username.trim(), "--password-stdin"],
+      { timeout: 60_000 },
+    );
+    login.child.stdin?.end(password + "\n");
+    await login;
+    res.status(200).json({ authenticated: true });
+  } catch (err) {
+    const { code, message } = mcvError(err);
+    const wrongLogin = code === "authentication_failed" || code === "not_authenticated";
+    // 400, not 401: the frontend treats 401 as "cwenda session expired" and reloads
+    res.status(wrongLogin ? 400 : 502).json({ error: message });
+  }
+});
+
+// Forgets mcv-cli's saved MyCourseVille session (Import From MCV needs a new login afterwards).
+eventRouter.post("/mcvLogout", async (_req: Request, res: Response) => {
+  try {
+    await run(await mcvExecutable(), ["--json", "--quiet", "auth", "logout"], { timeout: 30_000 });
+    res.status(200).json({ authenticated: false });
+  } catch (err) {
+    res.status(502).json({ error: mcvError(err).message });
+  }
+});
+
 export default eventRouter;

@@ -52,6 +52,18 @@ export function handleLogout() {
   return getJson("/auth/logout", { method: "POST" });
 }
 
+// Needs the current password; logs out every other browser, this one stays logged in.
+export function handleChangePassword(
+  currentPassword: string,
+  newPassword: string,
+) {
+  return getJson<{ ok: true }>("/auth/password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
 // Events that overlap [start, end], ordered by start_time.
 export function handleGetEvent(start: Date, end: Date): Promise<Event[]> {
   const query = new URLSearchParams({
@@ -116,6 +128,29 @@ export function handleUpdateTag(id: number, name: string): Promise<Tag> {
 // Also removes the tag from every event (junction rows cascade).
 export function handleDeleteTag(id: number): Promise<{ id: number }> {
   return getJson(`/tag/deleteTag/${id}`, { method: "DELETE" });
+}
+
+export type McvStatus = { authenticated: boolean; session_expired?: boolean };
+
+// Whether mcv-cli on the backend's machine has a working MyCourseVille session.
+export function handleMcvStatus(): Promise<McvStatus> {
+  return getJson("/event/mcvStatus");
+}
+
+// Logs mcv-cli in (Chula username + MyCourseVille password); cwenda doesn't store the password.
+export function handleMcvLogin(username: string, password: string) {
+  return getJson<{ authenticated: true }>("/event/mcvLogin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+// Forgets mcv-cli's saved MyCourseVille session.
+export function handleMcvLogout() {
+  return getJson<{ authenticated: false }>("/event/mcvLogout", {
+    method: "POST",
+  });
 }
 
 // Runs mcv-cli on the backend's machine; can take a while (one request per course).

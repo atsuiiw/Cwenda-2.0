@@ -3,6 +3,7 @@ import DBPool from "../database/database.ts";
 import { sendDbError } from "./helpers.ts";
 import {
   createSession,
+  deleteOtherSessions,
   deleteSession,
   getSessionUser,
   hashPassword,
@@ -91,6 +92,50 @@ authRouter.post("/logout", async (req: Request, res: Response) => {
     res.status(200).json({ ok: true });
   } catch (err) {
     sendDbError(res, err);
+  }
+});
+
+// Change the password while logged in. Needs the current password, so a browser left logged in
+// can't be used to take over the account. Other browsers are logged out; this one stays in.
+authRouter.post("/password", async (req: Request, res: Response) => {
+  const currentPassword = text(req.body?.currentPassword);
+  const newPassword = text(req.body?.newPassword);
+  if (newPassword.length < MIN_PASSWORD_LENGTH) {
+    return res
+      .status(400)
+      .json({ error: `New password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+  }
+  if (newPassword === currentPassword) {
+    return res.status(400).json({ error: "New password must be different from the current one" });
+  }
+
+  const client = await DBPool.connect();
+  try {
+    const user = await getSessionUser(req);
+    if (!user) return res.status(401).json({ error: "Not logged in" });
+
+    await client.query("BEGIN");
+    // FOR UPDATE: two changes at once can't both pass the check against the old hash
+    const { rows } = await client.query(
+      `SELECT password_hash FROM app_user WHERE id = $1 FOR UPDATE;`,
+      [user.id],
+    );
+    if (!rows[0] || !(await verifyPassword(currentPassword, rows[0].password_hash))) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Current password is wrong" });
+    }
+    await client.query(`UPDATE app_user SET password_hash = $1 WHERE id = $2;`, [
+      await hashPassword(newPassword),
+      user.id,
+    ]);
+    await deleteOtherSessions(req, user.id, client);
+    await client.query("COMMIT");
+    res.status(200).json({ ok: true });
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {}); // may not be in a transaction yet
+    sendDbError(res, err);
+  } finally {
+    client.release();
   }
 });
 

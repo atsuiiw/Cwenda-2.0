@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { handleLogout } from "../api/api.config";
+import { McvLogin } from "../McvLogin/McvLogin";
+import { ChangePassword } from "../ChangePassword/ChangePassword";
 
 import home from "../assets/dynnamitt_home.svg";
 import calendar from "../assets/bridging-day-icon.svg";
@@ -8,11 +11,16 @@ import account from "../assets/abstract-user-flat-1.svg";
 import sun from "../assets/1340277498.svg";
 import moon from "../assets/moon.svg";
 
+const menuItemClass =
+  "w-full text-left px-3 py-2 rounded-md hover:bg-secondary-color hover:text-white hover:cursor-pointer duration-100";
+
 export type ThemeProps = { darkTheme: boolean; onThemeToggle: () => void };
 
 export function Navbar({ darkTheme, onThemeToggle }: ThemeProps) {
   // first URL segment, e.g. /event/5 -> "EVENT"; read every render so it follows navigation
   const active = useLocation().pathname.split("/")[1].toUpperCase();
+  const [mcvOpen, setMcvOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   const navigate = useNavigate();
   // [label, path, icon?] — icon replaces the text; label stays as alt text
@@ -57,18 +65,61 @@ export function Navbar({ darkTheme, onThemeToggle }: ThemeProps) {
           <button className={buttonClass} onClick={onThemeToggle}>
             <img src={darkTheme ? moon : sun} className="w-8 h-8 dark:invert" />
           </button>
+          {/* native popover: opens on click, closes on outside click or Escape */}
           <button
             className={buttonClass}
-            title="Log out"
-            // reload so AppRouter asks the backend again and shows the login screen
-            onClick={() =>
-              handleLogout().finally(() => window.location.reload())
-            }
+            title="Account"
+            popoverTarget="account-menu"
           >
-            <img src={account} alt="Log out" className="w-8 h-8 dark:invert" />
+            <img src={account} alt="Account" className="w-8 h-8 dark:invert" />
           </button>
+          <div
+            id="account-menu"
+            popover="auto"
+            // popovers are centred by default; pin this one beside the account button
+            className="fixed inset-auto left-24 bottom-4 m-0 p-1 w-40 rounded-lg shadow-xl bg-middleground-color-light dark:bg-middleground-color-dark dark:text-white"
+          >
+            <ul className="flex flex-col">
+              <li>
+                <button
+                  className={`${menuItemClass}`}
+                  popoverTarget="account-menu"
+                  popoverTargetAction="hide"
+                  onClick={() => setMcvOpen(true)}
+                >
+                  MCV login
+                </button>
+              </li>
+              <li>
+                <button
+                  className={menuItemClass}
+                  popoverTarget="account-menu"
+                  popoverTargetAction="hide"
+                  onClick={() => setPasswordOpen(true)}
+                >
+                  Change password
+                </button>
+              </li>
+              <li>
+                <button
+                  className={`${menuItemClass} text-primary-color`}
+                  // reload so AppRouter asks the backend again and shows the login screen
+                  onClick={() =>
+                    handleLogout().finally(() => window.location.reload())
+                  }
+                >
+                  Log out
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
+      <McvLogin open={mcvOpen} onClose={() => setMcvOpen(false)} />
+      <ChangePassword
+        open={passwordOpen}
+        onClose={() => setPasswordOpen(false)}
+      />
     </>
   );
 }

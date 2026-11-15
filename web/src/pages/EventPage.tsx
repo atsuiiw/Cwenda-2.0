@@ -32,6 +32,7 @@ const formatTime = (iso: string) =>
 
 export function Event() {
   const [data, setData] = useState<EventItem[]>([]);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null); // which request the data on screen came from
   const [tagNames, setTagNames] = useState<Map<number, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<number[]>([]);
@@ -65,6 +66,10 @@ export function Event() {
     }
   };
 
+  // loading = the data on screen isn't from the current request yet (an error stops it)
+  const loadKey = `${showPast}-${reloadKey}`;
+  const isLoading = loadedKey !== loadKey && !error;
+
   useEffect(() => {
     // wait while the tag manager is open; closing it reloads, so renamed/deleted tags show up
     if (tagManagerOpen) return;
@@ -79,19 +84,19 @@ export function Event() {
     const to = showPast
       ? now
       : new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
-
     Promise.all([handleGetEvent(from, to), handleGetTag()])
       .then(([events, tags]) => {
         if (ignore) return;
         setData(events);
         setTagNames(new Map(tags.map((tag) => [tag.id, tag.name])));
+        setLoadedKey(loadKey);
       })
       .catch((err) => !ignore && setError(err.message));
 
     return () => {
       ignore = true;
     };
-  }, [showPast, tagManagerOpen, reloadKey]);
+  }, [showPast, tagManagerOpen, reloadKey, loadKey]);
 
   // console.log(data);
 
@@ -130,7 +135,8 @@ export function Event() {
   const pillClass = `
     px-3 py-1 rounded-full text-xs hover:cursor-pointer hover:opacity-90 duration-100
   `;
-  const unselectedPill = "bg-gray-300 dark:bg-gray-700 dark:text-white duration-100";
+  const unselectedPill =
+    "bg-gray-300 dark:bg-gray-700 dark:text-white duration-100";
 
   const buttonClass = `
     hover:cursor-pointer hover:scale-97 hover:opacity-90
@@ -142,7 +148,9 @@ export function Event() {
 
   return (
     <>
+      {/* Main Container */}
       <div className="flex flex-col gap-6 m-2 bg-middleground-color-light dark:bg-middleground-color-dark w-full rounded-md px-20 py-12 overflow-y-auto duration-100">
+        {/* Top Row */}
         <div className="flex justify-between">
           <h1 className="text-4xl dark:text-white font-bold"> Events </h1>
           <div className="flex gap-4">
@@ -221,6 +229,8 @@ export function Event() {
           })}
         </div>
 
+        {/* Data */}
+        {isLoading && <h1> Loading... </h1>}
         <div>
           {error && <p className="text-primary-color">{error}</p>}
           {notice && <p className="opacity-70 dark:text-white">{notice}</p>}
@@ -233,7 +243,9 @@ export function Event() {
             ({ title, events }) =>
               events.length > 0 && (
                 <section key={title}>
-                  <h2 className="text-2xl mb-3 dark:text-white duration-100">{title}</h2>
+                  <h2 className="text-2xl mb-3 dark:text-white duration-100">
+                    {title}
+                  </h2>
                   <ul>
                     {events.map((event) => (
                       <li
