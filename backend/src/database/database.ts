@@ -1,9 +1,5 @@
 import { Pool } from "pg";
-import config from "../config/config.ts";
-
-// environment
-import dotenv from "dotenv";
-dotenv.config();
+import config from "../config/config.ts"; // also loads backend/.env
 
 const Host = config.DB_Host;
 const User = config.DB_User;

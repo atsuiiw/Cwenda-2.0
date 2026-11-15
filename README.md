@@ -75,6 +75,24 @@ removes it.
 > If an update changes `backend/db/schema.sql`, its release notes will list the SQL to run, e.g.
 > `docker compose exec db psql -U cwenda -d cwenda -c "ALTER TABLE …"`.
 
+### Start automatically (no Docker Desktop window needed)
+
+The Docker Desktop window isn't what runs the app. The engine behind it is. You can close the
+window and cwenda keeps running, as long as Docker's whale icon is in the menu bar (macOS) or
+system tray (Windows).
+
+To have cwenda come up by itself every time you log in:
+
+1. Docker Desktop → **Settings → General** → turn on **Start Docker Desktop when you sign in to
+   your computer**.
+2. Optional: in the same place, turn off **Open Docker Dashboard when Docker Desktop starts**, so
+   the window doesn't pop up.
+3. Run `docker compose up -d` once (you already did if you followed the steps above).
+
+That's all: `compose.yaml` uses `restart: unless-stopped`, so the containers start whenever the
+Docker engine does. They stay off only if you stopped them yourself (`docker compose stop` or
+`down`) or quit Docker Desktop from the whale icon.
+
 ## Run without Docker (for development)
 
 **Requirements**
@@ -109,6 +127,46 @@ npm run dev
 
 Open the address Vite prints (usually http://localhost:5173). The first visit asks you to create
 your account.
+
+## Run in the background without Docker (pm2)
+
+Runs the production build on your own machine, using your local Postgres (the setup from
+"Run without Docker" above). [pm2](https://pm2.keymetrics.io/) keeps it running in the background,
+restarts it if it crashes, and can start it when you log in.
+
+```bash
+npm install -g pm2
+
+cd web && npm run build                  # build the frontend into web/dist
+cd ../backend
+PORT=8001 pm2 start npm --name cwenda -- start
+pm2 save                                 # remember the app (and its port) for later
+```
+
+Open **http://localhost:8001**. The backend serves both the app and the API there.
+
+**Why port 8001:** `npm run dev` (the dev backend) and the Docker version both use 8000. A `PORT`
+set in the shell wins over `backend/.env`, so this copy can run next to them. Any free port works.
+
+**Start at login:** run `pm2 startup`. It prints one `sudo …` command for your machine; run that
+command once. Without it, the app runs until you restart the computer; bring it back with
+`pm2 resurrect`.
+
+| Task | Command |
+|------|---------|
+| Status | `pm2 status` |
+| Logs | `pm2 logs cwenda` |
+| After `git pull` or code changes | `cd web && npm run build && pm2 restart cwenda` |
+| Stop / remove | `pm2 stop cwenda` / `pm2 delete cwenda` |
+
+Notes:
+
+- Frontend changes show up only after `npm run build` and `pm2 restart cwenda`: the backend serves
+  whatever is in `web/dist`.
+- Postgres must be running (macOS: `brew services start postgresql@18`). If it isn't, the app
+  exits at startup; `pm2 logs cwenda` shows why.
+- This copy uses your local `cwenda` database. The Docker version has its own separate database,
+  so the two don't share events or accounts.
 
 ## Import From MCV (optional)
 
