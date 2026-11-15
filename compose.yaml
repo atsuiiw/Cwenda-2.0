@@ -1,0 +1,48 @@
+# cwenda: Postgres + the app. Usage:
+#   cp .env.example .env    # set the two secrets
+#   docker compose up --build -d
+#   open http://localhost:8000
+# `docker compose down` keeps your data; `docker compose down -v` DELETES it (events, login, MCV session).
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: cwenda
+      POSTGRES_USER: cwenda
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql # Postgres 18 images keep their data under here
+      # runs once, when the database is first created (an empty pgdata volume)
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cwenda -d cwenda"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy # the server exits at startup if the database isn't ready
+    environment:
+      PORT: 8000
+      DB_Host: db # the service name is the hostname inside compose
+      DB_Port: 5432
+      DB_User: cwenda
+      DB_Password: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      DB_Database: cwenda
+      # no OS keyring in a container: mcv-cli saves its login to an encrypted file with this passphrase
+      MCV_STORAGE_PASSPHRASE: ${MCV_STORAGE_PASSPHRASE:?set MCV_STORAGE_PASSPHRASE in .env}
+    volumes:
+      - mcvdata:/home/node/.config/mcv # MCV login survives restarts and rebuilds
+    ports:
+      # 127.0.0.1 = this computer only (no login rate limit, plain http)
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  mcvdata:

@@ -52,6 +52,18 @@ export function handleLogout() {
   return getJson("/auth/logout", { method: "POST" });
 }
 
+// Needs the current password; logs out every other browser, this one stays logged in.
+export function handleChangePassword(
+  currentPassword: string,
+  newPassword: string,
+) {
+  return getJson<{ ok: true }>("/auth/password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
 // Events that overlap [start, end], ordered by start_time.
 export function handleGetEvent(start: Date, end: Date): Promise<Event[]> {
   const query = new URLSearchParams({

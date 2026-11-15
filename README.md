@@ -19,6 +19,7 @@ your MyCourseVille assignments in as events.
   [mcv-cli](https://github.com/Okumans/mcv-cli). Re-importing updates due dates and submitted status
   without overwriting your own edits. Log in and out of MCV from inside the app.
 - **Login**: on first start you create a username and password; after that the app asks you to log in.
+  Change your password any time from the account menu (bottom of the sidebar) → **Change password**.
 - **Light and dark mode.**
 
 ## Project layout
@@ -28,13 +29,61 @@ your MyCourseVille assignments in as events.
 | [`backend/`](backend/) | Express + PostgreSQL API. Setup details, API reference and database notes in [`backend/README.md`](backend/README.md). |
 | [`web/`](web/) | React + Vite + Tailwind frontend. |
 
-## Requirements
+## Run with Docker (recommended)
 
-- Node.js 20 or newer
+The easiest way to run cwenda on any computer (macOS, Windows or Linux). Docker brings the
+database, Node, Python and mcv-cli, so you don't install any of them yourself.
+
+**You need:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (running) and git.
+
+```bash
+git clone https://github.com/atsuiiw/Cwenda-2.0.git cwenda
+cd cwenda
+cp .env.example .env      # then open .env and change both secrets
+docker compose up --build -d
+```
+
+Open **http://localhost:8000** and create your account. The first build takes a few minutes;
+after that it starts in seconds.
+
+What's in `.env`:
+
+| Setting | What it's for |
+|---------|---------------|
+| `POSTGRES_PASSWORD` | Password for the app's database (inside Docker). Pick anything. |
+| `MCV_STORAGE_PASSPHRASE` | 8+ characters. Encrypts your saved MyCourseVille login. If you change it later, just log in to MCV again. |
+| `APP_PORT` | Port on your computer (default `8000`). Change it if 8000 is already in use. |
+
+The app is only reachable from your own computer, not from other devices on your network.
+
+### Everyday commands
+
+| Task | Command |
+|------|---------|
+| Start | `docker compose up -d` |
+| Stop (keeps your data) | `docker compose down` |
+| See logs | `docker compose logs -f app` |
+| Update to the latest version | `git pull && docker compose up --build -d` |
+| Back up your data | `docker compose exec -T db pg_dump -U cwenda --data-only cwenda > cwenda-backup.sql` |
+| Restore a backup (into a fresh install, before creating an account) | `docker compose exec -T db psql -U cwenda -d cwenda < cwenda-backup.sql` |
+| **Delete everything** (account, events, MCV login) | `docker compose down -v` |
+
+Your data lives in Docker volumes, so it survives restarts, `down`, and updates. Only `down -v`
+removes it.
+
+> **Updating and the database:** the tables are created only the first time the database starts.
+> If an update changes `backend/db/schema.sql`, its release notes will list the SQL to run, e.g.
+> `docker compose exec db psql -U cwenda -d cwenda -c "ALTER TABLE …"`.
+
+## Run without Docker (for development)
+
+**Requirements**
+
+- Node.js 20 or newer (24 recommended: production runs the backend with plain `node`)
 - PostgreSQL (macOS: `brew install postgresql@18 && brew services start postgresql@18`)
 - Optional, for Import From MCV: [uv](https://docs.astral.sh/uv/) and mcv-cli (see below)
 
-## Run it locally
+If the Docker version is running on port 8000 too, set `APP_PORT=8080` in the root `.env`.
 
 **1. Backend** (first time: database and config)
 
@@ -63,7 +112,10 @@ your account.
 
 ## Import From MCV (optional)
 
-The backend runs mcv-cli on the same machine, using your MyCourseVille login. Install it once:
+**With Docker:** mcv-cli is already inside, so skip the install and go straight to "in the app"
+below. Your MCV login is saved (encrypted with `MCV_STORAGE_PASSPHRASE`) in a Docker volume.
+
+**Without Docker:** the backend runs mcv-cli on the same machine. Install it once:
 
 ```bash
 uv tool install \
@@ -79,12 +131,17 @@ Then, in the app:
 
 If your MCV session expires, log in again from the same popup (`mcv auth login` in a terminal also
 works). **Log out of MCV** in that popup removes the saved session. cwenda doesn't store your MCV
-password; mcv-cli keeps its session in your OS keyring. Works on macOS and Linux.
+password; mcv-cli keeps its session in your OS keyring (or, with Docker, the encrypted volume).
+Without Docker this works on macOS and Linux; with Docker, on any system.
 
 ## Forgot your password?
 
 Delete the account and the setup screen comes back (events and tags are kept):
 
 ```bash
+# with Docker
+docker compose exec db psql -U cwenda -d cwenda -c "DELETE FROM app_user;"
+
+# without Docker
 psql -d cwenda -c "DELETE FROM app_user;"
 ```

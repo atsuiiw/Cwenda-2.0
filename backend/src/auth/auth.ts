@@ -64,6 +64,14 @@ export async function deleteSession(req: Request, res: Response) {
   setCookie(res, "", 0);
 }
 
+// Logs the user out everywhere except this browser (used after a password change).
+export async function deleteOtherSessions(req: Request, userId: number, db: Pool | PoolClient = DBPool) {
+  await db.query(`DELETE FROM session WHERE user_id = $1 AND token_hash <> $2;`, [
+    userId,
+    sha256(readToken(req) ?? ""),
+  ]);
+}
+
 export async function getSessionUser(
   req: Request,
 ): Promise<{ id: number; username: string } | null> {

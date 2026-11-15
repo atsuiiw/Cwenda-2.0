@@ -13,6 +13,8 @@ import dotenv from "dotenv";
 import tagRouter from "../router/router.tag.ts";
 import authRouter from "../router/router.auth.ts";
 import { requireAuth } from "../auth/auth.ts";
+import fs from "node:fs";
+import path from "node:path";
 dotenv.config();
 
 // default app class
@@ -39,6 +41,17 @@ app.use("/api/auth", authRouter);
 // everything else needs a logged-in session
 app.use("/api/event", requireAuth, eventRouter);
 app.use("/api/tag", requireAuth, tagRouter);
+
+// Production: serve the built React app (web/dist), and send index.html for any non-/api URL so
+// React Router handles routes like /event/5 on reload. Skipped when there's no build (npm run dev).
+const webDist = path.join(import.meta.dirname, "../../../web/dist");
+if (fs.existsSync(webDist)) {
+  app.use(express.static(webDist));
+  app.get(/^\/(?!api\/).*/, (_req: Request, res: Response) => {
+    res.sendFile(path.join(webDist, "index.html"));
+  });
+}
+
 app.get("/", (req: Request, res: Response) => {
   res.send("The backend is now running...");
 });

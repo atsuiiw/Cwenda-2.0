@@ -45,6 +45,7 @@ Everything under `/api/event` and `/api/tag` needs a logged-in session (else `40
 | POST | `/api/auth/setup` | `{ "username", "password" }` (8+ chars). First run only; `409` once an account exists. Logs in |
 | POST | `/api/auth/login` | `{ "username", "password" }`; sets an HttpOnly session cookie (30 days) |
 | POST | `/api/auth/logout` | |
+| POST | `/api/auth/password` | `{ "currentPassword", "newPassword" }` (8+ chars, must differ). Needs a session. Wrong current password → `400`. Logs out every other browser; this one stays logged in |
 | GET | `/api/event/getEvent?start_time=&end_time=` | Events in range, each with `tag_ids` |
 | GET | `/api/event/getEvent/:id` | One event |
 | GET | `/api/event/getEventByTags?start_time=&end_time=&tag_id=1,2&matchType=ANY` | `matchType` is `ANY` (default) or `ALL` |

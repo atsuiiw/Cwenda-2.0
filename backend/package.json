@@ -8,7 +8,8 @@
   "main": "src/server/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx watch src/server/index.ts"
+    "dev": "tsx watch src/server/index.ts",
+    "start": "node src/server/index.ts"
   },
   "dependencies": {
     "dotenv": "^18.0.9",
