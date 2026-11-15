@@ -6,6 +6,8 @@ Express + PostgreSQL API for the calendar web app.
 
 - Node.js 20 or newer
 - PostgreSQL (macOS: `brew install postgresql@18 && brew services start postgresql@18`)
+- Optional, for the MCV routes: mcv-cli installed with `uv tool install` (see the root
+  [README](../README.md#import-from-mcv-optional)). macOS/Linux only.
 
 ## Setup
 
@@ -30,8 +32,8 @@ With Homebrew Postgres the user is usually your macOS username, and any non-empt
 npm run dev
 ```
 
-You should see `Database connected` and `Connected at port : 3000`.
-Check it at http://localhost:3000/.
+You should see `Database connected` and `Connected at port : 8000`.
+Check it at http://localhost:8000/. Keep `PORT=8000`: the frontend dev server forwards `/api` there.
 
 ## API
 
@@ -49,6 +51,10 @@ Everything under `/api/event` and `/api/tag` needs a logged-in session (else `40
 | POST | `/api/event/postEvent` | JSON body; optional `tag_id: [1, 2]` |
 | PUT | `/api/event/updateEvent/:id` | Send every field. Omit `tag_id` to keep tags, `[]` to remove all |
 | DELETE | `/api/event/deleteEvent/:id` | |
+| POST | `/api/event/importMcv` | Imports MyCourseVille assignments via mcv-cli → `{ added, updated }`. `502` with a readable `error` if mcv-cli fails (e.g. session expired) |
+| GET | `/api/event/mcvStatus` | `{ authenticated, session_expired? }` for mcv-cli on this machine |
+| POST | `/api/event/mcvLogin` | `{ "username", "password" }` (Chula username, MyCourseVille password). Password goes to mcv-cli over stdin and isn't stored by cwenda. Wrong login → `400` (not `401`, which the frontend reads as "cwenda session expired") |
+| POST | `/api/event/mcvLogout` | Removes mcv-cli's saved session |
 | GET | `/api/tag/getTag` | `[{ id, name }]` |
 | POST | `/api/tag/postTag` | `{ "name": "..." }` |
 | PUT | `/api/tag/updateTag/:id` | `{ "name": "..." }` |
