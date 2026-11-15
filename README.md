@@ -62,11 +62,12 @@ The backend runs mcv-cli on the same machine, using your MyCourseVille login.
 uv tool install \
   --with 'git+https://github.com/Okumans/mcv-cli.git#subdirectory=packages/mcv-api' \
   'git+https://github.com/Okumans/mcv-cli.git'
-mcv auth login
 ```
 
-Then click **Import From MCV** on the Events page. If your MCV session expires, the app tells you to
-run `mcv auth login` again. Works on macOS and Linux.
+Then log in to MyCourseVille from the app: click the account icon at the bottom of the sidebar, then
+**MCV login**. After that, click **Import From MCV** on the Events page. If your MCV session expires,
+log in there again (`mcv auth login` in a terminal also works). cwenda doesn't store your MCV
+password; mcv-cli keeps its session in your OS keyring. Works on macOS and Linux.
 
 ## Forgot your password?
 

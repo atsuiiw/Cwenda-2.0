@@ -7,6 +7,9 @@ export type View = "day" | "week" | "month";
 const DAY_MIN = 24 * 60;
 const MIN_EVENT_MIN = 30; // short and zero-length events (MCV due dates) still get a clickable block
 
+export const isToday = (day: Date) =>
+  day.toDateString() === new Date().toDateString();
+
 export const addDays = (d: Date, n: number) => {
   const x = new Date(d);
   x.setDate(x.getDate() + n);

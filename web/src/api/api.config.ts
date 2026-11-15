@@ -118,6 +118,29 @@ export function handleDeleteTag(id: number): Promise<{ id: number }> {
   return getJson(`/tag/deleteTag/${id}`, { method: "DELETE" });
 }
 
+export type McvStatus = { authenticated: boolean; session_expired?: boolean };
+
+// Whether mcv-cli on the backend's machine has a working MyCourseVille session.
+export function handleMcvStatus(): Promise<McvStatus> {
+  return getJson("/event/mcvStatus");
+}
+
+// Logs mcv-cli in (Chula username + MyCourseVille password); cwenda doesn't store the password.
+export function handleMcvLogin(username: string, password: string) {
+  return getJson<{ authenticated: true }>("/event/mcvLogin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+// Forgets mcv-cli's saved MyCourseVille session.
+export function handleMcvLogout() {
+  return getJson<{ authenticated: false }>("/event/mcvLogout", {
+    method: "POST",
+  });
+}
+
 // Runs mcv-cli on the backend's machine; can take a while (one request per course).
 export function handleImportMcv(): Promise<{ added: number; updated: number }> {
   return getJson("/event/importMcv", { method: "POST" });

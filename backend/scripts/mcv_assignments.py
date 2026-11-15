@@ -32,7 +32,7 @@ def mcv_json(*args: str):
 
 
 if not mcv_json("auth", "status").get("authenticated"):
-    fail("MCV session expired. Run `mcv auth login` in a terminal, then import again.")
+    fail("MCV session expired. Log in again with 'MCV login' in the account menu (bottom of the sidebar), then import again.")
 
 rows = []
 for raw in mcv_json("assignments", "list", "--due"):
